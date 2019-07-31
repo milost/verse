@@ -11,6 +11,7 @@ from struct import pack
 import click
 import logging
 import numpy as np
+import scipy.sparse
 
 
 MAGIC = 'XGFS'.encode('utf8')
@@ -19,6 +20,11 @@ MAGIC = 'XGFS'.encode('utf8')
 def mat2csr(filename, varname):
     mat = loadmat(filename)[varname].tocsr()
     return mat.indptr[:-1], mat.indices, mat.data  # we treat weights in xgfs2file
+
+
+def scipy2csr(filename):
+    mat = scipy.sparse.load_npz(filename)
+    return mat.indptr[:-1], mat.indices, mat.data
 
 
 def xgfs2file(outf, indptr, indices, weights=None):
@@ -106,6 +112,8 @@ def list2mat(input, undirected, sep, format):
 def process(format, matfile_variable_name, undirected, sep, input, output):
     if format == "mat":
         indptr, indices, weights = mat2csr(input, matfile_variable_name)
+    elif format == "scipy":
+        indptr, indices, weights = scipy2csr(input)
     elif format in ['weighted_edgelist', 'edgelist', 'adjlist']:
         indptr, indices, weights = list2mat(input, undirected, sep, format)
 
@@ -116,7 +124,7 @@ def process(format, matfile_variable_name, undirected, sep, input, output):
 @click.command(help=__doc__)
 @click.option('--format',
               default='edgelist',
-              type=click.Choice(['mat', 'weighted_edgelist', 'edgelist', 'adjlist']),
+              type=click.Choice(['mat', 'scipy', 'weighted_edgelist', 'edgelist', 'adjlist']),
               help='File format of input file')
 @click.option('--matfile-variable-name', default='network',
               help='variable name of adjacency matrix inside a .mat file.')
